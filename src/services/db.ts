@@ -11,18 +11,6 @@ import {
 } from '../types/crm';
 import { getSupabase } from '../lib/supabase';
 import {
-  saveDocToFirestore,
-  saveBatchToFirestore,
-  initFirestoreDatabase,
-  COLL_DEPARTMENTS,
-  COLL_STATUSES,
-  COLL_PROFILES,
-  COLL_LEADS,
-  COLL_ACTIVITIES,
-  COLL_FOLLOWUPS,
-  COLL_ASSIGNMENTS,
-} from './firestoreService';
-import {
   INITIAL_PROFILES,
   INITIAL_DEPARTMENTS,
   INITIAL_STATUSES,
@@ -120,7 +108,6 @@ export async function createDepartment(input: { name: string; description: strin
 
   departmentsStore = [newDept, ...departmentsStore];
   save(STORAGE_DEPARTMENTS, departmentsStore);
-  saveDocToFirestore(COLL_DEPARTMENTS, newDept.id, newDept);
 
   const supabase = getSupabase();
   if (supabase) {
@@ -138,7 +125,6 @@ export async function createDepartment(input: { name: string; description: strin
 export async function updateDepartment(id: string, input: Partial<Department>): Promise<Department> {
   departmentsStore = departmentsStore.map((d) => (d.id === id ? { ...d, ...input } : d));
   save(STORAGE_DEPARTMENTS, departmentsStore);
-  saveDocToFirestore(COLL_DEPARTMENTS, id, input);
 
   const supabase = getSupabase();
   if (supabase) {
@@ -195,7 +181,6 @@ export async function createLeadStatus(input: {
 
   statusesStore = [...statusesStore, newStatus].sort((a, b) => a.display_order - b.display_order);
   save(STORAGE_STATUSES, statusesStore);
-  saveDocToFirestore(COLL_STATUSES, newStatus.id, newStatus);
 
   const supabase = getSupabase();
   if (supabase) {
@@ -215,7 +200,6 @@ export async function updateLeadStatus(id: string, input: Partial<LeadStatus>): 
     .map((s) => (s.id === id ? { ...s, ...input } : s))
     .sort((a, b) => a.display_order - b.display_order);
   save(STORAGE_STATUSES, statusesStore);
-  saveDocToFirestore(COLL_STATUSES, id, input);
 
   const supabase = getSupabase();
   if (supabase) {
@@ -283,7 +267,6 @@ export async function createProfile(input: {
 
   profilesStore = [newProfile, ...profilesStore];
   save(STORAGE_PROFILES, profilesStore);
-  saveDocToFirestore(COLL_PROFILES, newProfile.id, newProfile);
 
   const supabase = getSupabase();
   if (supabase) {
@@ -312,7 +295,6 @@ export async function createProfile(input: {
 export async function updateProfile(id: string, input: Partial<UserProfile>): Promise<UserProfile> {
   profilesStore = profilesStore.map((p) => (p.id === id ? { ...p, ...input } : p));
   save(STORAGE_PROFILES, profilesStore);
-  saveDocToFirestore(COLL_PROFILES, id, input);
 
   const supabase = getSupabase();
   if (supabase) {
@@ -519,7 +501,6 @@ export async function createLead(input: Omit<Lead, 'id' | 'lead_number' | 'creat
 
   leadsStore = [newLead, ...leadsStore];
   save(STORAGE_LEADS, leadsStore);
-  saveDocToFirestore(COLL_LEADS, newLead.id, newLead);
 
   const supabase = getSupabase();
   if (supabase) {
@@ -538,7 +519,6 @@ export async function updateLead(id: string, input: Partial<Lead>): Promise<Lead
   const now = new Date().toISOString();
   leadsStore = leadsStore.map((l) => (l.id === id ? { ...l, ...input, updated_at: now } : l));
   save(STORAGE_LEADS, leadsStore);
-  saveDocToFirestore(COLL_LEADS, id, input);
 
   const supabase = getSupabase();
   if (supabase) {
@@ -602,15 +582,6 @@ export async function assignLeads(params: {
 
   assignmentsStore = [...newAssignments, ...assignmentsStore];
   save(STORAGE_ASSIGNMENTS, assignmentsStore);
-
-  saveBatchToFirestore(
-    COLL_LEADS,
-    leadIds.map((id) => ({ id, data: { assigned_to: assignToUserId, assigned_at: now, department_id: departmentId || undefined } }))
-  );
-  saveBatchToFirestore(
-    COLL_ASSIGNMENTS,
-    newAssignments.map((a) => ({ id: a.id, data: a }))
-  );
 
   const supabase = getSupabase();
   if (supabase) {
@@ -788,17 +759,6 @@ export async function executeImportLeads(
     save(STORAGE_ASSIGNMENTS, assignmentsStore);
   }
 
-  saveBatchToFirestore(
-    COLL_LEADS,
-    newLeads.map((l) => ({ id: l.id, data: l }))
-  );
-  if (newAssignments.length > 0) {
-    saveBatchToFirestore(
-      COLL_ASSIGNMENTS,
-      newAssignments.map((a) => ({ id: a.id, data: a }))
-    );
-  }
-
   const supabase = getSupabase();
   if (supabase) {
     try {
@@ -885,7 +845,6 @@ export async function updateLeadCallResponse(params: {
 
   activitiesStore = [newActivity, ...activitiesStore];
   save(STORAGE_ACTIVITIES, activitiesStore);
-  saveDocToFirestore(COLL_ACTIVITIES, newActivity.id, newActivity);
 
   // 2. If follow-up or callback is scheduled, create Followup record
   if (followupDate || callbackDate) {
@@ -906,7 +865,6 @@ export async function updateLeadCallResponse(params: {
     };
     followupsStore = [newFollowup, ...followupsStore];
     save(STORAGE_FOLLOWUPS, followupsStore);
-    saveDocToFirestore(COLL_FOLLOWUPS, newFollowup.id, newFollowup);
   }
 
   // 3. Update Lead in database
@@ -932,7 +890,6 @@ export async function updateLeadCallResponse(params: {
 
   leadsStore = leadsStore.map((l) => (l.id === leadId ? { ...l, ...updatedLeadData } : l));
   save(STORAGE_LEADS, leadsStore);
-  saveDocToFirestore(COLL_LEADS, leadId, updatedLeadData);
 
   const supabase = getSupabase();
   if (supabase) {
@@ -1012,7 +969,6 @@ export async function completeFollowup(followupId: string): Promise<void> {
     f.id === followupId ? { ...f, status: 'COMPLETED', completed_at: now } : f
   );
   save(STORAGE_FOLLOWUPS, followupsStore);
-  saveDocToFirestore(COLL_FOLLOWUPS, followupId, { status: 'COMPLETED', completed_at: now });
 
   const supabase = getSupabase();
   if (supabase) {
@@ -1405,4 +1361,72 @@ export function getConversionMetrics(userId?: string): ConversionMetrics {
   };
 }
 
-export { initFirestoreDatabase as initCloudDatabase };
+export async function initCloudDatabase(): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  try {
+    const { data } = await supabase.from('departments').select('id').limit(1);
+    if (data && data.length > 0) {
+      console.log('Supabase PostgreSQL database active and responsive.');
+    }
+  } catch (e) {
+    console.warn('Supabase initialization check:', e);
+  }
+}
+
+export async function seedSupabaseDatabase(): Promise<{ success: boolean; message: string }> {
+  const supabase = getSupabase();
+  if (!supabase) {
+    return {
+      success: false,
+      message: 'Supabase client is not connected. Please enter your Project URL and Anon API key above.',
+    };
+  }
+
+  try {
+    // 1. Departments
+    const { count: deptCount, error: deptErr } = await supabase.from('departments').select('*', { count: 'exact', head: true });
+    if (deptErr) {
+      if (deptErr.code === '42P01') {
+        return {
+          success: false,
+          message: 'PostgreSQL tables do not exist yet! Please click "Copy SQL Schema", run it in your Supabase SQL Editor, and then click Seed.',
+        };
+      }
+      return { success: false, message: `Supabase query error: ${deptErr.message}` };
+    }
+
+    if ((deptCount ?? 0) === 0 && departmentsStore.length > 0) {
+      await supabase.from('departments').upsert(departmentsStore);
+    }
+
+    // 2. Lead Statuses
+    const { count: statCount } = await supabase.from('lead_statuses').select('*', { count: 'exact', head: true });
+    if ((statCount ?? 0) === 0 && statusesStore.length > 0) {
+      await supabase.from('lead_statuses').upsert(statusesStore);
+    }
+
+    // 3. Profiles
+    const { count: profCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+    if ((profCount ?? 0) === 0 && profilesStore.length > 0) {
+      await supabase.from('profiles').upsert(profilesStore);
+    }
+
+    // 4. Leads
+    const { count: leadCount } = await supabase.from('leads').select('*', { count: 'exact', head: true });
+    if ((leadCount ?? 0) === 0 && leadsStore.length > 0) {
+      await supabase.from('leads').upsert(leadsStore);
+    }
+
+    notifyChange();
+    return {
+      success: true,
+      message: 'All default departments, statuses, user profiles, and leads successfully seeded to Supabase!',
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: `Failed to seed database: ${err.message || 'Unknown error'}`,
+    };
+  }
+}

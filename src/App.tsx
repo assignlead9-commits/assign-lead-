@@ -13,7 +13,7 @@ import { UsersManager } from './components/admin/UsersManager';
 import { StatusMaster } from './components/admin/StatusMaster';
 import { AdminReports } from './components/admin/AdminReports';
 import { LeadEditModal } from './components/admin/LeadEditModal';
-import { FirebaseStatusView } from './components/admin/FirebaseStatusView';
+import { SupabaseDatabaseView } from './components/admin/SupabaseDatabaseView';
 
 import { TelecallerDashboard } from './components/telecaller/TelecallerDashboard';
 import { MyLeads } from './components/telecaller/MyLeads';
@@ -179,10 +179,10 @@ const MainApp: React.FC = () => {
         onSearchClick={() => {}}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        onOpenFirebaseStatus={() => {
+        onOpenDatabaseStatus={() => {
           if (role === 'ADMIN') {
             setCallingLead(null);
-            setCurrentTab('firebase-status');
+            setCurrentTab('supabase-db');
           }
         }}
       />
@@ -285,7 +285,7 @@ const MainApp: React.FC = () => {
                 <StatusMaster
                   statuses={statuses}
                   onRefresh={reloadData}
-                  onOpenFirebaseStatus={() => setCurrentTab('firebase-status')}
+                  onOpenDatabaseStatus={() => setCurrentTab('supabase-db')}
                 />
               )}
 
@@ -300,8 +300,8 @@ const MainApp: React.FC = () => {
                 />
               )}
 
-              {currentTab === 'firebase-status' && (
-                <FirebaseStatusView />
+              {currentTab === 'supabase-db' && (
+                <SupabaseDatabaseView />
               )}
             </>
           ) : (

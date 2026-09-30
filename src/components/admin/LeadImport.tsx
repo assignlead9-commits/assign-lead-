@@ -17,7 +17,68 @@ import {
   Building2,
   UserCheck,
   RefreshCw,
+  Download,
+  FileText,
+  Info,
 } from 'lucide-react';
+
+const SAMPLE_LEAD_DATA = [
+  {
+    customer_name: 'Rajesh Sharma',
+    mobile: '9876543210',
+    alternate_mobile: '9876501234',
+    city: 'Mumbai',
+    state: 'Maharashtra',
+    product: 'Ayurvedic Wellness Kit',
+    amount: 2499,
+    source: 'Facebook Ad',
+    department: 'Ayurvedic Health',
+  },
+  {
+    customer_name: 'Pooja Verma',
+    mobile: '9823456789',
+    alternate_mobile: '',
+    city: 'Delhi',
+    state: 'Delhi',
+    product: 'Herbal Immunity Booster',
+    amount: 1899,
+    source: 'Google Search',
+    department: 'Ayurvedic Health',
+  },
+  {
+    customer_name: 'Vikram Patel',
+    mobile: '9765432198',
+    alternate_mobile: '9123456780',
+    city: 'Ahmedabad',
+    state: 'Gujarat',
+    product: 'Organic Detox Tea',
+    amount: 1299,
+    source: 'Website Enquiry',
+    department: 'Direct Sales',
+  },
+  {
+    customer_name: 'Anita Desai',
+    mobile: '9912345678',
+    alternate_mobile: '',
+    city: 'Bengaluru',
+    state: 'Karnataka',
+    product: 'Vitality Supplement',
+    amount: 3499,
+    source: 'Instagram Campaign',
+    department: 'Ayurvedic Health',
+  },
+  {
+    customer_name: 'Sunil Reddy',
+    mobile: '9845123456',
+    alternate_mobile: '9845199999',
+    city: 'Hyderabad',
+    state: 'Telangana',
+    product: 'Hair Care Regime',
+    amount: 1599,
+    source: 'WhatsApp Referral',
+    department: 'Direct Sales',
+  },
+];
 
 interface LeadImportProps {
   departments: Department[];
@@ -208,14 +269,78 @@ export const LeadImport: React.FC<LeadImportProps> = ({
     }
   };
 
+  // Download Sample Template Handlers
+  const handleDownloadSampleExcel = () => {
+    try {
+      const ws = XLSX.utils.json_to_sheet(SAMPLE_LEAD_DATA);
+      ws['!cols'] = [
+        { wch: 20 }, // customer_name
+        { wch: 15 }, // mobile
+        { wch: 18 }, // alternate_mobile
+        { wch: 15 }, // city
+        { wch: 15 }, // state
+        { wch: 26 }, // product
+        { wch: 12 }, // amount
+        { wch: 20 }, // source
+        { wch: 20 }, // department
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Leads_Template');
+      XLSX.writeFile(wb, 'Sample_Leads_Template.xlsx');
+      showToast('Sample Excel template downloaded!', 'success');
+    } catch (err: any) {
+      showToast(`Failed to download Excel template: ${err.message}`, 'error');
+    }
+  };
+
+  const handleDownloadSampleCsv = () => {
+    try {
+      const csv = Papa.unparse(SAMPLE_LEAD_DATA);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Sample_Leads_Template.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast('Sample CSV template downloaded!', 'success');
+    } catch (err: any) {
+      showToast(`Failed to download CSV template: ${err.message}`, 'error');
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="border-b border-slate-200 pb-3">
-        <h2 className="text-xl font-bold text-slate-900">Excel / CSV Lead Import</h2>
-        <p className="text-xs sm:text-sm text-slate-500">
-          Upload customer spreadsheets (.xlsx, .xls, .csv), map columns, deduplicate mobile numbers, and assign
-        </p>
+      <div className="border-b border-slate-200 pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Excel / CSV Lead Import</h2>
+          <p className="text-xs sm:text-sm text-slate-500">
+            Upload customer spreadsheets (.xlsx, .xls, .csv), map columns, deduplicate mobile numbers, and assign
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleDownloadSampleExcel}
+            title="Download sample Excel file with preconfigured columns and test rows"
+            className="inline-flex items-center px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold shadow-2xs transition"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+            Sample Excel (.xlsx)
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadSampleCsv}
+            title="Download sample CSV file with preconfigured columns and test rows"
+            className="inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition"
+          >
+            <FileText className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
+            Sample CSV (.csv)
+          </button>
+        </div>
       </div>
 
       {/* 6 Steps Progress Bar */}
@@ -257,8 +382,8 @@ export const LeadImport: React.FC<LeadImportProps> = ({
 
       {/* STEP 1: Select File */}
       {currentStep === 1 && (
-        <div className="bg-white border border-slate-200 rounded-xl p-8 shadow-xs text-center">
-          <div className="max-w-md mx-auto border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-8 transition cursor-pointer relative bg-slate-50/50">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 sm:p-8 shadow-xs">
+          <div className="max-w-md mx-auto border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-8 transition cursor-pointer relative bg-slate-50/50 text-center">
             <input
               type="file"
               accept=".xlsx,.xls,.csv"
@@ -274,6 +399,49 @@ export const LeadImport: React.FC<LeadImportProps> = ({
               <span className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition">
                 Select Spreadsheet File
               </span>
+            </div>
+          </div>
+
+          {/* Sample Template Download Card */}
+          <div className="mt-8 border-t border-slate-100 pt-6">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 sm:p-5">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-2 text-slate-900 font-bold text-sm">
+                    <Download className="w-4 h-4 text-emerald-600" />
+                    <span>Download Sample Template</span>
+                  </div>
+                  <p className="text-xs text-slate-600">
+                    Use our verified template with all standard CRM columns: Name, Mobile, Alternate, City, State, Product, Amount, Source & Department.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {['customer_name', 'mobile', 'alternate_mobile', 'city', 'state', 'product', 'amount', 'source', 'department'].map((col) => (
+                      <span key={col} className="px-2 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono text-slate-600">
+                        {col}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleDownloadSampleExcel}
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-100" />
+                    Download Excel (.xlsx)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadSampleCsv}
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold shadow-xs transition cursor-pointer"
+                  >
+                    <FileText className="w-4 h-4 mr-2 text-blue-600" />
+                    Download CSV (.csv)
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

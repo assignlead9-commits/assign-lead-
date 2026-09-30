@@ -19,10 +19,10 @@ interface NavbarProps {
   onSearchClick: () => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
-  onOpenFirebaseStatus?: () => void;
+  onOpenDatabaseStatus?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onSearchClick, searchQuery, onSearchChange, onOpenFirebaseStatus }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onSearchClick, searchQuery, onSearchChange, onOpenDatabaseStatus }) => {
   const { currentUser, role, logout, switchUser, availableUsers } = useAuth();
   const [showDbModal, setShowDbModal] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -93,16 +93,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearchClick, searchQuery, onSe
 
         {/* Right Section: Database Status + User Switcher + Profile */}
         <div className="flex items-center space-x-3">
-          {/* Firebase Cloud Database Status Button */}
+          {/* Supabase PostgreSQL Database Status Button */}
           <button
-            onClick={onOpenFirebaseStatus || (() => setShowDbModal(true))}
-            title="Firebase Firestore: Live & Connected (Click to view database status)"
+            onClick={onOpenDatabaseStatus || (() => setShowDbModal(true))}
+            title="Supabase PostgreSQL Database (Click to manage database)"
             className="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition shadow-xs cursor-pointer"
           >
-            <Flame className="w-3.5 h-3.5 mr-1 text-orange-500 fill-orange-500" />
+            <Database className="w-3.5 h-3.5 mr-1 text-emerald-600" />
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse mr-1.5" />
-            <span className="hidden sm:inline">Firebase: </span>
-            <span>Connected</span>
+            <span className="hidden sm:inline">Supabase: </span>
+            <span>{hasCustomDb ? 'Connected' : 'Setup'}</span>
           </button>
 
           {/* Quick Role & User Switcher */}

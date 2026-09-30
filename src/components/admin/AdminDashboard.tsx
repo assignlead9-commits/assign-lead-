@@ -24,8 +24,7 @@ import {
   Database,
 } from 'lucide-react';
 import { StatusBadge } from '../common/Badge';
-import firebaseConfig from '../../../firebase-applet-config.json';
-import { testConnection } from '../../services/firestoreService';
+import { testSupabaseConnection, getStoredSupabaseConfig } from '../../lib/supabase';
 
 interface AdminDashboardProps {
   metrics: AdminDashboardMetrics;
@@ -41,24 +40,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   deptSummary,
   onNavigateToTab,
 }) => {
-  const [isTestingFirebase, setIsTestingFirebase] = useState(false);
-  const [firebaseLatency, setFirebaseLatency] = useState<number | null>(null);
-  const [firebaseHealthy, setFirebaseHealthy] = useState<boolean>(true);
+  const [isTestingDb, setIsTestingDb] = useState(false);
+  const [dbLatency, setDbLatency] = useState<number | null>(null);
+  const [dbHealthy, setDbHealthy] = useState<boolean>(false);
+  const supabaseConfig = getStoredSupabaseConfig();
 
-  const handlePingFirebase = async () => {
-    setIsTestingFirebase(true);
-    const res = await testConnection();
-    setIsTestingFirebase(false);
+  const handlePingDb = async () => {
+    setIsTestingDb(true);
+    const start = performance.now();
+    const res = await testSupabaseConnection();
+    const end = performance.now();
+    setIsTestingDb(false);
     if (res.success) {
-      setFirebaseLatency(res.latency);
-      setFirebaseHealthy(true);
+      setDbLatency(Math.round(end - start));
+      setDbHealthy(true);
     } else {
-      setFirebaseHealthy(false);
+      setDbHealthy(false);
+      setDbLatency(null);
     }
   };
 
   useEffect(() => {
-    handlePingFirebase();
+    handlePingDb();
   }, []);
 
   const topKpis = [
@@ -111,60 +114,60 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
-      {/* Firebase Cloud Database Status Bar */}
+      {/* Supabase PostgreSQL Database Status Bar */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-xl p-4 shadow-sm border border-slate-700/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-lg bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center shrink-0">
-            <Flame className="w-5 h-5 fill-orange-400" />
+          <div className="w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+            <Database className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm text-white">Firebase Firestore Database</span>
+              <span className="font-bold text-sm text-white">Supabase PostgreSQL Database</span>
               <span
                 className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                  firebaseHealthy
+                  dbHealthy
                     ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                    : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                    : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
                 }`}
               >
                 <span
                   className={`w-1.5 h-1.5 rounded-full mr-1 ${
-                    firebaseHealthy ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'
+                    dbHealthy ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
                   }`}
                 />
-                {firebaseHealthy ? 'Live Cloud Sync' : 'Reconnecting...'}
+                {dbHealthy ? 'Live Connected' : 'Setup Required'}
               </span>
             </div>
             <p className="text-xs text-slate-300 mt-0.5 font-mono text-[11px] truncate max-w-lg">
-              DB: {firebaseConfig.firestoreDatabaseId} &bull; Project: {firebaseConfig.projectId}
+              Engine: PostgreSQL 15+ &bull; URL: {supabaseConfig.url || 'https://xyz.supabase.co (Click to configure)'}
             </p>
           </div>
         </div>
 
         <div className="flex items-center space-x-2 self-start md:self-auto">
-          {firebaseLatency !== null && (
+          {dbLatency !== null && (
             <div className="hidden lg:flex items-center px-2.5 py-1 rounded bg-slate-950/60 border border-slate-800 text-[11px] text-slate-300">
-              <span className="text-slate-400 mr-1.5">Ping:</span>
-              <span className="text-emerald-400 font-mono font-bold">{firebaseLatency}ms</span>
+              <span className="text-slate-400 mr-1.5">Latency:</span>
+              <span className="text-emerald-400 font-mono font-bold">{dbLatency}ms</span>
             </div>
           )}
 
           <button
-            onClick={handlePingFirebase}
-            disabled={isTestingFirebase}
+            onClick={handlePingDb}
+            disabled={isTestingDb}
             className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold transition flex items-center space-x-1 cursor-pointer"
-            title="Ping Firebase Firestore"
+            title="Ping Supabase database"
           >
-            <RefreshCw className={`w-3 h-3 ${isTestingFirebase ? 'animate-spin' : ''}`} />
-            <span>{isTestingFirebase ? 'Pinging...' : 'Test Ping'}</span>
+            <RefreshCw className={`w-3 h-3 ${isTestingDb ? 'animate-spin' : ''}`} />
+            <span>{isTestingDb ? 'Pinging...' : 'Test Connection'}</span>
           </button>
 
           <button
-            onClick={() => onNavigateToTab('firebase-status')}
+            onClick={() => onNavigateToTab('supabase-db')}
             className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1.5 shadow-xs cursor-pointer"
           >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>View Firebase Status &rarr;</span>
+            <Database className="w-3.5 h-3.5" />
+            <span>Manage Supabase &rarr;</span>
           </button>
         </div>
       </div>

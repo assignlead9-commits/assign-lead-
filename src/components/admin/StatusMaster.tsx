@@ -12,26 +12,24 @@ import {
   ArrowUpDown,
   X,
   Search,
-  Flame,
   RefreshCw,
   ShieldCheck,
   Database,
 } from 'lucide-react';
-import firebaseConfig from '../../../firebase-applet-config.json';
-import { saveDocToFirestore, COLL_STATUSES } from '../../services/firestoreService';
+import { getSupabase } from '../../lib/supabase';
 
 interface StatusMasterProps {
   statuses: LeadStatus[];
   onRefresh: () => void;
-  onOpenFirebaseStatus?: () => void;
+  onOpenDatabaseStatus?: () => void;
 }
 
-export const StatusMaster: React.FC<StatusMasterProps> = ({ statuses, onRefresh, onOpenFirebaseStatus }) => {
+export const StatusMaster: React.FC<StatusMasterProps> = ({ statuses, onRefresh, onOpenDatabaseStatus }) => {
   const { showToast } = useToast();
   const [search, setSearch] = useState<string>('');
   const [showModal, setShowModal] = useState<boolean>(false);
   const [editingStatus, setEditingStatus] = useState<LeadStatus | null>(null);
-  const [isSyncingFirebase, setIsSyncingFirebase] = useState<boolean>(false);
+  const [isSyncingDb, setIsSyncingDb] = useState<boolean>(false);
 
   const [formData, setFormData] = useState<{
     name: string;
@@ -79,10 +77,10 @@ export const StatusMaster: React.FC<StatusMasterProps> = ({ statuses, onRefresh,
     try {
       if (editingStatus) {
         await updateLeadStatus(editingStatus.id, formData);
-        showToast('Lead status updated successfully and synced to Firebase.', 'success');
+        showToast('Lead status updated successfully.', 'success');
       } else {
         await createLeadStatus(formData);
-        showToast('New lead status created and synced to Firebase.', 'success');
+        showToast('New lead status created successfully.', 'success');
       }
       setShowModal(false);
       onRefresh();
@@ -94,24 +92,28 @@ export const StatusMaster: React.FC<StatusMasterProps> = ({ statuses, onRefresh,
   const handleToggleActive = async (id: string, currentActive: boolean) => {
     try {
       await updateLeadStatus(id, { active: !currentActive });
-      showToast(`Status ${currentActive ? 'deactivated' : 'activated'} and updated in Firebase.`, 'success');
+      showToast(`Status ${currentActive ? 'deactivated' : 'activated'}.`, 'success');
       onRefresh();
     } catch (err: any) {
       showToast(`Error: ${err.message}`, 'error');
     }
   };
 
-  const handleSyncAllToFirebase = async () => {
-    setIsSyncingFirebase(true);
+  const handleSyncAllToSupabase = async () => {
+    setIsSyncingDb(true);
+    const supabase = getSupabase();
+    if (!supabase) {
+      showToast('Supabase client is not connected. Enter your URL and Anon Key in Supabase Database tab.', 'error');
+      setIsSyncingDb(false);
+      return;
+    }
     try {
-      for (const st of statuses) {
-        await saveDocToFirestore(COLL_STATUSES, st.id, st);
-      }
-      showToast(`All ${statuses.length} status records synced to Firebase Firestore (/lead_statuses)`, 'success');
+      await supabase.from('lead_statuses').upsert(statuses);
+      showToast(`All ${statuses.length} status records synced to Supabase (public.lead_statuses)`, 'success');
     } catch (err: any) {
-      showToast(`Firebase sync error: ${err.message}`, 'error');
+      showToast(`Supabase sync error: ${err.message}`, 'error');
     } finally {
-      setIsSyncingFirebase(false);
+      setIsSyncingDb(false);
     }
   };
 
@@ -124,7 +126,7 @@ export const StatusMaster: React.FC<StatusMasterProps> = ({ statuses, onRefresh,
             <h2 className="text-xl font-bold text-slate-900">Lead Status Master</h2>
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1.5" />
-              Firebase Synced
+              PostgreSQL Ready
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500">
@@ -134,13 +136,13 @@ export const StatusMaster: React.FC<StatusMasterProps> = ({ statuses, onRefresh,
 
         <div className="flex items-center space-x-2">
           <button
-            onClick={handleSyncAllToFirebase}
-            disabled={isSyncingFirebase}
+            onClick={handleSyncAllToSupabase}
+            disabled={isSyncingDb}
             className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5 cursor-pointer"
-            title="Push all lead status configurations to Firebase Firestore"
+            title="Push all lead status configurations to Supabase"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncingFirebase ? 'animate-spin' : ''}`} />
-            <span>{isSyncingFirebase ? 'Syncing...' : 'Sync to Firebase'}</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncingDb ? 'animate-spin' : ''}`} />
+            <span>{isSyncingDb ? 'Syncing...' : 'Sync to Supabase'}</span>
           </button>
 
           <button
@@ -153,23 +155,22 @@ export const StatusMaster: React.FC<StatusMasterProps> = ({ statuses, onRefresh,
         </div>
       </div>
 
-      {/* Firebase Cloud Status Info Bar in Status Master */}
+      {/* Supabase PostgreSQL Master Sync Bar in Status Master */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-xl p-4 shadow-sm border border-slate-700/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-lg bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center shrink-0">
-            <Flame className="w-5 h-5 fill-orange-400" />
+          <div className="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+            <Database className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm text-white">Firebase Firestore Master Sync</span>
+              <span className="font-bold text-sm text-white">Supabase PostgreSQL Master Sync</span>
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1" />
                 Live Cloud Active
               </span>
             </div>
             <p className="text-xs text-slate-300 mt-0.5">
-              Collection: <span className="font-mono text-emerald-300">/lead_statuses</span> in DB:{' '}
-              <span className="font-mono text-slate-400 text-[11px]">{firebaseConfig.firestoreDatabaseId}</span>
+              Table: <span className="font-mono text-emerald-300">public.lead_statuses</span> with Row-Level Security
             </p>
           </div>
         </div>
@@ -179,13 +180,13 @@ export const StatusMaster: React.FC<StatusMasterProps> = ({ statuses, onRefresh,
             <span className="text-slate-400">Total Configured: </span>
             <span className="font-bold text-white ml-1">{statuses.length}</span>
           </div>
-          {onOpenFirebaseStatus && (
+          {onOpenDatabaseStatus && (
             <button
-              onClick={onOpenFirebaseStatus}
+              onClick={onOpenDatabaseStatus}
               className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-xs cursor-pointer"
             >
               <Database className="w-3.5 h-3.5" />
-              <span>Database Details</span>
+              <span>Manage Database &rarr;</span>
             </button>
           )}
         </div>
