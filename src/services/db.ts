@@ -11,6 +11,18 @@ import {
 } from '../types/crm';
 import { getSupabase } from '../lib/supabase';
 import {
+  saveDocToFirestore,
+  saveBatchToFirestore,
+  initFirestoreDatabase,
+  COLL_DEPARTMENTS,
+  COLL_STATUSES,
+  COLL_PROFILES,
+  COLL_LEADS,
+  COLL_ACTIVITIES,
+  COLL_FOLLOWUPS,
+  COLL_ASSIGNMENTS,
+} from './firestoreService';
+import {
   INITIAL_PROFILES,
   INITIAL_DEPARTMENTS,
   INITIAL_STATUSES,
@@ -108,6 +120,7 @@ export async function createDepartment(input: { name: string; description: strin
 
   departmentsStore = [newDept, ...departmentsStore];
   save(STORAGE_DEPARTMENTS, departmentsStore);
+  saveDocToFirestore(COLL_DEPARTMENTS, newDept.id, newDept);
 
   const supabase = getSupabase();
   if (supabase) {
@@ -125,6 +138,7 @@ export async function createDepartment(input: { name: string; description: strin
 export async function updateDepartment(id: string, input: Partial<Department>): Promise<Department> {
   departmentsStore = departmentsStore.map((d) => (d.id === id ? { ...d, ...input } : d));
   save(STORAGE_DEPARTMENTS, departmentsStore);
+  saveDocToFirestore(COLL_DEPARTMENTS, id, input);
 
   const supabase = getSupabase();
   if (supabase) {
@@ -181,6 +195,7 @@ export async function createLeadStatus(input: {
 
   statusesStore = [...statusesStore, newStatus].sort((a, b) => a.display_order - b.display_order);
   save(STORAGE_STATUSES, statusesStore);
+  saveDocToFirestore(COLL_STATUSES, newStatus.id, newStatus);
 
   const supabase = getSupabase();
   if (supabase) {
@@ -200,6 +215,7 @@ export async function updateLeadStatus(id: string, input: Partial<LeadStatus>): 
     .map((s) => (s.id === id ? { ...s, ...input } : s))
     .sort((a, b) => a.display_order - b.display_order);
   save(STORAGE_STATUSES, statusesStore);
+  saveDocToFirestore(COLL_STATUSES, id, input);
 
   const supabase = getSupabase();
   if (supabase) {
@@ -267,6 +283,7 @@ export async function createProfile(input: {
 
   profilesStore = [newProfile, ...profilesStore];
   save(STORAGE_PROFILES, profilesStore);
+  saveDocToFirestore(COLL_PROFILES, newProfile.id, newProfile);
 
   const supabase = getSupabase();
   if (supabase) {
@@ -295,6 +312,7 @@ export async function createProfile(input: {
 export async function updateProfile(id: string, input: Partial<UserProfile>): Promise<UserProfile> {
   profilesStore = profilesStore.map((p) => (p.id === id ? { ...p, ...input } : p));
   save(STORAGE_PROFILES, profilesStore);
+  saveDocToFirestore(COLL_PROFILES, id, input);
 
   const supabase = getSupabase();
   if (supabase) {
@@ -501,6 +519,7 @@ export async function createLead(input: Omit<Lead, 'id' | 'lead_number' | 'creat
 
   leadsStore = [newLead, ...leadsStore];
   save(STORAGE_LEADS, leadsStore);
+  saveDocToFirestore(COLL_LEADS, newLead.id, newLead);
 
   const supabase = getSupabase();
   if (supabase) {
@@ -519,6 +538,7 @@ export async function updateLead(id: string, input: Partial<Lead>): Promise<Lead
   const now = new Date().toISOString();
   leadsStore = leadsStore.map((l) => (l.id === id ? { ...l, ...input, updated_at: now } : l));
   save(STORAGE_LEADS, leadsStore);
+  saveDocToFirestore(COLL_LEADS, id, input);
 
   const supabase = getSupabase();
   if (supabase) {
@@ -582,6 +602,15 @@ export async function assignLeads(params: {
 
   assignmentsStore = [...newAssignments, ...assignmentsStore];
   save(STORAGE_ASSIGNMENTS, assignmentsStore);
+
+  saveBatchToFirestore(
+    COLL_LEADS,
+    leadIds.map((id) => ({ id, data: { assigned_to: assignToUserId, assigned_at: now, department_id: departmentId || undefined } }))
+  );
+  saveBatchToFirestore(
+    COLL_ASSIGNMENTS,
+    newAssignments.map((a) => ({ id: a.id, data: a }))
+  );
 
   const supabase = getSupabase();
   if (supabase) {
@@ -759,6 +788,17 @@ export async function executeImportLeads(
     save(STORAGE_ASSIGNMENTS, assignmentsStore);
   }
 
+  saveBatchToFirestore(
+    COLL_LEADS,
+    newLeads.map((l) => ({ id: l.id, data: l }))
+  );
+  if (newAssignments.length > 0) {
+    saveBatchToFirestore(
+      COLL_ASSIGNMENTS,
+      newAssignments.map((a) => ({ id: a.id, data: a }))
+    );
+  }
+
   const supabase = getSupabase();
   if (supabase) {
     try {
@@ -845,6 +885,7 @@ export async function updateLeadCallResponse(params: {
 
   activitiesStore = [newActivity, ...activitiesStore];
   save(STORAGE_ACTIVITIES, activitiesStore);
+  saveDocToFirestore(COLL_ACTIVITIES, newActivity.id, newActivity);
 
   // 2. If follow-up or callback is scheduled, create Followup record
   if (followupDate || callbackDate) {
@@ -865,6 +906,7 @@ export async function updateLeadCallResponse(params: {
     };
     followupsStore = [newFollowup, ...followupsStore];
     save(STORAGE_FOLLOWUPS, followupsStore);
+    saveDocToFirestore(COLL_FOLLOWUPS, newFollowup.id, newFollowup);
   }
 
   // 3. Update Lead in database
@@ -890,6 +932,7 @@ export async function updateLeadCallResponse(params: {
 
   leadsStore = leadsStore.map((l) => (l.id === leadId ? { ...l, ...updatedLeadData } : l));
   save(STORAGE_LEADS, leadsStore);
+  saveDocToFirestore(COLL_LEADS, leadId, updatedLeadData);
 
   const supabase = getSupabase();
   if (supabase) {
@@ -969,6 +1012,7 @@ export async function completeFollowup(followupId: string): Promise<void> {
     f.id === followupId ? { ...f, status: 'COMPLETED', completed_at: now } : f
   );
   save(STORAGE_FOLLOWUPS, followupsStore);
+  saveDocToFirestore(COLL_FOLLOWUPS, followupId, { status: 'COMPLETED', completed_at: now });
 
   const supabase = getSupabase();
   if (supabase) {
@@ -1360,3 +1404,5 @@ export function getConversionMetrics(userId?: string): ConversionMetrics {
     orderConversionRatePercent,
   };
 }
+
+export { initFirestoreDatabase as initCloudDatabase };

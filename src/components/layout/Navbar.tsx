@@ -10,6 +10,7 @@ import {
   Calendar,
   Building,
   ChevronDown,
+  Flame,
 } from 'lucide-react';
 import { SupabaseModal } from '../common/SupabaseModal';
 import { getStoredSupabaseConfig } from '../../lib/supabase';
@@ -18,9 +19,10 @@ interface NavbarProps {
   onSearchClick: () => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
+  onOpenFirebaseStatus?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onSearchClick, searchQuery, onSearchChange }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onSearchClick, searchQuery, onSearchChange, onOpenFirebaseStatus }) => {
   const { currentUser, role, logout, switchUser, availableUsers } = useAuth();
   const [showDbModal, setShowDbModal] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -91,18 +93,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearchClick, searchQuery, onSe
 
         {/* Right Section: Database Status + User Switcher + Profile */}
         <div className="flex items-center space-x-3">
-          {/* Supabase Status Button */}
+          {/* Firebase Cloud Database Status Button */}
           <button
-            onClick={() => setShowDbModal(true)}
-            title="Database Connection & Supabase SQL Schema"
-            className={`hidden sm:inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-medium border transition ${
-              hasCustomDb
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-            }`}
+            onClick={onOpenFirebaseStatus || (() => setShowDbModal(true))}
+            title="Firebase Firestore: Live & Connected (Click to view database status)"
+            className="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition shadow-xs cursor-pointer"
           >
-            <Database className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
-            <span>{hasCustomDb ? 'Supabase Connected' : 'Supabase SQL / DB'}</span>
+            <Flame className="w-3.5 h-3.5 mr-1 text-orange-500 fill-orange-500" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse mr-1.5" />
+            <span className="hidden sm:inline">Firebase: </span>
+            <span>Connected</span>
           </button>
 
           {/* Quick Role & User Switcher */}

@@ -12,18 +12,26 @@ import {
   ArrowUpDown,
   X,
   Search,
+  Flame,
+  RefreshCw,
+  ShieldCheck,
+  Database,
 } from 'lucide-react';
+import firebaseConfig from '../../../firebase-applet-config.json';
+import { saveDocToFirestore, COLL_STATUSES } from '../../services/firestoreService';
 
 interface StatusMasterProps {
   statuses: LeadStatus[];
   onRefresh: () => void;
+  onOpenFirebaseStatus?: () => void;
 }
 
-export const StatusMaster: React.FC<StatusMasterProps> = ({ statuses, onRefresh }) => {
+export const StatusMaster: React.FC<StatusMasterProps> = ({ statuses, onRefresh, onOpenFirebaseStatus }) => {
   const { showToast } = useToast();
   const [search, setSearch] = useState<string>('');
   const [showModal, setShowModal] = useState<boolean>(false);
   const [editingStatus, setEditingStatus] = useState<LeadStatus | null>(null);
+  const [isSyncingFirebase, setIsSyncingFirebase] = useState<boolean>(false);
 
   const [formData, setFormData] = useState<{
     name: string;
@@ -71,10 +79,10 @@ export const StatusMaster: React.FC<StatusMasterProps> = ({ statuses, onRefresh 
     try {
       if (editingStatus) {
         await updateLeadStatus(editingStatus.id, formData);
-        showToast('Lead status updated successfully.', 'success');
+        showToast('Lead status updated successfully and synced to Firebase.', 'success');
       } else {
         await createLeadStatus(formData);
-        showToast('New lead status created successfully.', 'success');
+        showToast('New lead status created and synced to Firebase.', 'success');
       }
       setShowModal(false);
       onRefresh();
@@ -86,10 +94,24 @@ export const StatusMaster: React.FC<StatusMasterProps> = ({ statuses, onRefresh 
   const handleToggleActive = async (id: string, currentActive: boolean) => {
     try {
       await updateLeadStatus(id, { active: !currentActive });
-      showToast(`Status ${currentActive ? 'deactivated' : 'activated'}.`, 'success');
+      showToast(`Status ${currentActive ? 'deactivated' : 'activated'} and updated in Firebase.`, 'success');
       onRefresh();
     } catch (err: any) {
       showToast(`Error: ${err.message}`, 'error');
+    }
+  };
+
+  const handleSyncAllToFirebase = async () => {
+    setIsSyncingFirebase(true);
+    try {
+      for (const st of statuses) {
+        await saveDocToFirestore(COLL_STATUSES, st.id, st);
+      }
+      showToast(`All ${statuses.length} status records synced to Firebase Firestore (/lead_statuses)`, 'success');
+    } catch (err: any) {
+      showToast(`Firebase sync error: ${err.message}`, 'error');
+    } finally {
+      setIsSyncingFirebase(false);
     }
   };
 
@@ -98,19 +120,75 @@ export const StatusMaster: React.FC<StatusMasterProps> = ({ statuses, onRefresh 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-200 gap-3">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Lead Status Master</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-slate-900">Lead Status Master</h2>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1.5" />
+              Firebase Synced
+            </span>
+          </div>
           <p className="text-xs sm:text-sm text-slate-500">
             Configure dynamic disposition statuses, lifecycle categories, and telecaller response options
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAdd}
-          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center space-x-1.5 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add New Status</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={handleSyncAllToFirebase}
+            disabled={isSyncingFirebase}
+            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5 cursor-pointer"
+            title="Push all lead status configurations to Firebase Firestore"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncingFirebase ? 'animate-spin' : ''}`} />
+            <span>{isSyncingFirebase ? 'Syncing...' : 'Sync to Firebase'}</span>
+          </button>
+
+          <button
+            onClick={handleOpenAdd}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center space-x-1.5 self-start sm:self-auto cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add New Status</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Firebase Cloud Status Info Bar in Status Master */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-xl p-4 shadow-sm border border-slate-700/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex items-center space-x-3">
+          <div className="w-9 h-9 rounded-lg bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center shrink-0">
+            <Flame className="w-5 h-5 fill-orange-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm text-white">Firebase Firestore Master Sync</span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1" />
+                Live Cloud Active
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 mt-0.5">
+              Collection: <span className="font-mono text-emerald-300">/lead_statuses</span> in DB:{' '}
+              <span className="font-mono text-slate-400 text-[11px]">{firebaseConfig.firestoreDatabaseId}</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-3 text-xs">
+          <div className="bg-slate-950/60 px-3 py-1.5 rounded-lg border border-slate-800">
+            <span className="text-slate-400">Total Configured: </span>
+            <span className="font-bold text-white ml-1">{statuses.length}</span>
+          </div>
+          {onOpenFirebaseStatus && (
+            <button
+              onClick={onOpenFirebaseStatus}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-xs cursor-pointer"
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span>Database Details</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Search */}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AdminDashboardMetrics,
   UserPerformanceRow,
@@ -18,8 +18,14 @@ import {
   PhoneCall,
   Calendar,
   Sparkles,
+  ShieldCheck,
+  CheckCircle2,
+  RefreshCw,
+  Database,
 } from 'lucide-react';
 import { StatusBadge } from '../common/Badge';
+import firebaseConfig from '../../../firebase-applet-config.json';
+import { testConnection } from '../../services/firestoreService';
 
 interface AdminDashboardProps {
   metrics: AdminDashboardMetrics;
@@ -35,6 +41,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   deptSummary,
   onNavigateToTab,
 }) => {
+  const [isTestingFirebase, setIsTestingFirebase] = useState(false);
+  const [firebaseLatency, setFirebaseLatency] = useState<number | null>(null);
+  const [firebaseHealthy, setFirebaseHealthy] = useState<boolean>(true);
+
+  const handlePingFirebase = async () => {
+    setIsTestingFirebase(true);
+    const res = await testConnection();
+    setIsTestingFirebase(false);
+    if (res.success) {
+      setFirebaseLatency(res.latency);
+      setFirebaseHealthy(true);
+    } else {
+      setFirebaseHealthy(false);
+    }
+  };
+
+  useEffect(() => {
+    handlePingFirebase();
+  }, []);
+
   const topKpis = [
     { label: 'Total Leads', value: metrics.totalLeads, icon: Layers, color: 'text-slate-900', bg: 'bg-slate-100', tab: 'leads', filter: 'all' },
     { label: 'Unassigned Leads', value: metrics.unassignedLeads, icon: AlertTriangle, color: 'text-amber-700', bg: 'bg-amber-100', tab: 'assign', filter: 'unassigned' },
@@ -81,6 +107,64 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-xs transition flex items-center space-x-1.5"
           >
             <span>Assign Leads</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Firebase Cloud Database Status Bar */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-xl p-4 shadow-sm border border-slate-700/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-lg bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center shrink-0">
+            <Flame className="w-5 h-5 fill-orange-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm text-white">Firebase Firestore Database</span>
+              <span
+                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                  firebaseHealthy
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                    : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full mr-1 ${
+                    firebaseHealthy ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'
+                  }`}
+                />
+                {firebaseHealthy ? 'Live Cloud Sync' : 'Reconnecting...'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 mt-0.5 font-mono text-[11px] truncate max-w-lg">
+              DB: {firebaseConfig.firestoreDatabaseId} &bull; Project: {firebaseConfig.projectId}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2 self-start md:self-auto">
+          {firebaseLatency !== null && (
+            <div className="hidden lg:flex items-center px-2.5 py-1 rounded bg-slate-950/60 border border-slate-800 text-[11px] text-slate-300">
+              <span className="text-slate-400 mr-1.5">Ping:</span>
+              <span className="text-emerald-400 font-mono font-bold">{firebaseLatency}ms</span>
+            </div>
+          )}
+
+          <button
+            onClick={handlePingFirebase}
+            disabled={isTestingFirebase}
+            className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold transition flex items-center space-x-1 cursor-pointer"
+            title="Ping Firebase Firestore"
+          >
+            <RefreshCw className={`w-3 h-3 ${isTestingFirebase ? 'animate-spin' : ''}`} />
+            <span>{isTestingFirebase ? 'Pinging...' : 'Test Ping'}</span>
+          </button>
+
+          <button
+            onClick={() => onNavigateToTab('firebase-status')}
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1.5 shadow-xs cursor-pointer"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>View Firebase Status &rarr;</span>
           </button>
         </div>
       </div>

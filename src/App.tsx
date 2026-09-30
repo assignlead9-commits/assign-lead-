@@ -13,6 +13,7 @@ import { UsersManager } from './components/admin/UsersManager';
 import { StatusMaster } from './components/admin/StatusMaster';
 import { AdminReports } from './components/admin/AdminReports';
 import { LeadEditModal } from './components/admin/LeadEditModal';
+import { FirebaseStatusView } from './components/admin/FirebaseStatusView';
 
 import { TelecallerDashboard } from './components/telecaller/TelecallerDashboard';
 import { MyLeads } from './components/telecaller/MyLeads';
@@ -39,6 +40,7 @@ import {
   getUserPerformanceReport,
   getDepartmentReport,
   subscribeToDatabaseChanges,
+  initCloudDatabase,
 } from './services/db';
 
 const MainApp: React.FC = () => {
@@ -109,6 +111,10 @@ const MainApp: React.FC = () => {
   };
 
   useEffect(() => {
+    initCloudDatabase().catch((e) => console.warn('Cloud DB init:', e));
+  }, []);
+
+  useEffect(() => {
     if (isAuthenticated) {
       reloadData();
       // Listen to database changes
@@ -173,6 +179,12 @@ const MainApp: React.FC = () => {
         onSearchClick={() => {}}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        onOpenFirebaseStatus={() => {
+          if (role === 'ADMIN') {
+            setCallingLead(null);
+            setCurrentTab('firebase-status');
+          }
+        }}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -270,7 +282,11 @@ const MainApp: React.FC = () => {
               )}
 
               {currentTab === 'status-master' && (
-                <StatusMaster statuses={statuses} onRefresh={reloadData} />
+                <StatusMaster
+                  statuses={statuses}
+                  onRefresh={reloadData}
+                  onOpenFirebaseStatus={() => setCurrentTab('firebase-status')}
+                />
               )}
 
               {currentTab === 'reports' && (
@@ -282,6 +298,10 @@ const MainApp: React.FC = () => {
                   activities={[]}
                   followups={followups}
                 />
+              )}
+
+              {currentTab === 'firebase-status' && (
+                <FirebaseStatusView />
               )}
             </>
           ) : (

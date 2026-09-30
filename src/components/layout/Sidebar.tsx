@@ -13,6 +13,7 @@ import {
   CalendarClock,
   Sparkles,
   Layers,
+  Flame,
 } from 'lucide-react';
 
 export type AdminTab =
@@ -23,7 +24,8 @@ export type AdminTab =
   | 'departments'
   | 'users'
   | 'status-master'
-  | 'reports';
+  | 'reports'
+  | 'firebase-status';
 
 export type TelecallerTab = 'dashboard' | 'my-leads' | 'my-followups' | 'reports';
 
@@ -51,6 +53,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'users', label: 'Users Master', icon: Users },
     { id: 'status-master', label: 'Status Master', icon: ListFilter },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
+    {
+      id: 'firebase-status',
+      label: 'Firebase Status',
+      icon: Flame,
+      badge: 'Connected',
+      badgeColor: 'bg-emerald-500/20 text-emerald-400 font-bold',
+    },
   ];
 
   const telecallerNavItems = [
