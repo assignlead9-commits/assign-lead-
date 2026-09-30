@@ -1,0 +1,6 @@
+{
+  "name": "Essential Soul Lead Management CRM",
+  "description": "Streamlined Lead Assignment CRM for Ayurveda, Astrology, and Sales teams with lead import, smart manual assignment, telecaller calling queue, follow-ups, and reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
